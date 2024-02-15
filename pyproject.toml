@@ -28,6 +28,7 @@ dependencies = [
   "opentelemetry-api==1.22.0",
   "opentelemetry-sdk==1.22.0",
   "opentelemetry-instrumentation==0.43b0",
+  "otel-grpc-server"
 ]
 
 [project.urls]
@@ -83,6 +84,13 @@ all = [
   "style",
   "typing",
 ]
+
+[tool.hatch.envs.integration-tests]
+python = "3.8"
+dependencies = [
+]
+[tool.hatch.envs.integration-tests.scripts]
+pytest-integration = "pytest integration-tests"
 
 [tool.black]
 target-version = ["py37"]
