@@ -27,6 +27,7 @@ classifiers = [
 dependencies = [
   "opentelemetry-api==1.22.0",
   "opentelemetry-sdk==1.22.0",
+  "opentelemetry-exporter-otlp-proto-grpc==1.22.0",
   "opentelemetry-instrumentation==0.43b0",
   "otel-grpc-server"
 ]
@@ -35,6 +36,10 @@ dependencies = [
 Documentation = "https://github.com/unknown/csco-otel-python#readme"
 Issues = "https://github.com/unknown/csco-otel-python/issues"
 Source = "https://github.com/unknown/csco-otel-python"
+
+[project.scripts]
+cisco-instrument = "csco_otel_python.scripts:cisco_instrument"
+splunk-py-trace = "csco_otel_python.scripts:splunk_py_trace"
 
 [project.entry-points.opentelemetry_distro]
 distro = "csco_otel_python.distro:CscoDistro"
