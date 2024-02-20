@@ -1,8 +1,9 @@
 import time
+from typing import Sequence
 
 from opentelemetry import metrics
 
-from tests.util import Telemetry
+from tests.util import Telemetry, ConfigABC
 
 meter = metrics.get_meter('my-meter')
 counter = meter.create_counter('my-counter')
@@ -13,14 +14,15 @@ for i in range(num_adds):
     counter.add(1)
 
 
-def requirements():
-    return ('..',)
+class Config(ConfigABC):
 
+    def requirements(self) -> Sequence[str]:
+        return ('..',)
 
-def validate(t: Telemetry):
-    count = t.metrics[0].resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
-    return count == num_adds
+    def wrapper_name(self) -> str:
+        return 'cisco-instrument'
 
+    def validate(self, t: Telemetry) -> bool:
+        count = t.metrics[0].resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
+        return count == num_adds
 
-def wrapper_script_name():
-    return 'cisco-instrument'

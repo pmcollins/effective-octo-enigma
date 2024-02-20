@@ -5,12 +5,12 @@ import logging
 
 from otelserver import OtlpGrpcServer
 
-from tests.util import AccumulatingHandler, Venv
+from tests.util import AccumulatingHandler, Venv, ConfigABC
 
 INTEGRATION_TESTS_DIR = 'integration_tests'
 
 
-class ScriptRunner:
+class IntegrationTestRunner:
 
     def __init__(self, test_scripts_dir: str, logger):
         self.test_scripts_dir = test_scripts_dir
@@ -41,7 +41,8 @@ class ScriptExecution:
         self.handler = AccumulatingHandler()
         self.svr = OtlpGrpcServer(self.handler)
 
-        self.script_module = self.import_module()
+        script_module = self.import_module()
+        self.config: ConfigABC = script_module.Config()
 
     def import_module(self):
         module_name = '.'.join(['tests', self.test_scripts_dir, self.script[:-3]])
@@ -55,14 +56,14 @@ class ScriptExecution:
     def set_up_venv(self):
         self.logger.info(f'Creating venv')
         self.venv.create()
-        for req in self.script_module.requirements():
+        for req in self.config.requirements():
             self.logger.info(f'Installing requirement: "{req}"')
             self.venv_run('pip', 'install', req)
 
     def run_script(self):
         script_path = os.path.join(self.test_scripts_dir, self.script)
         cmd = ['python', script_path]
-        wrapper_script = self.script_module.wrapper_script_name()
+        wrapper_script = self.config.wrapper_name()
         if wrapper_script:
             cmd.insert(0, wrapper_script)
         self.venv_run(*cmd)
@@ -77,15 +78,18 @@ class ScriptExecution:
         self.svr.stop()
 
     def validate(self):
-        valid = self.script_module.validate(self.handler.telemetry)
+        valid = self.config.validate(self.handler.telemetry)
         self.logger.info(f'Valid: {valid}')
         assert valid
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
-    logger = logging.getLogger('script_runner')
-    runner = ScriptRunner(INTEGRATION_TESTS_DIR, logger)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s %(levelname)s %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    runner = IntegrationTestRunner(INTEGRATION_TESTS_DIR, logger)
     runner.eval_all()
 
 

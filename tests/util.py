@@ -1,3 +1,4 @@
+import abc
 import os
 import shutil
 import subprocess
@@ -61,3 +62,18 @@ class Venv:
 
     def delete(self):
         shutil.rmtree(self.venv_dir, ignore_errors=True)
+
+
+class ConfigABC(abc.ABC):
+
+    @abc.abstractmethod
+    def requirements(self) -> list[str]:
+        pass
+
+    @abc.abstractmethod
+    def validate(self, t: Telemetry) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def wrapper_name(self) -> str:
+        pass
