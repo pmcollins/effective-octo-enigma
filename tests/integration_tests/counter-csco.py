@@ -22,5 +22,5 @@ class CiscoIntegrationTest(IntegrationTest):
         return 'cisco-instrument'
 
     def validate(self, t: Telemetry) -> bool:
-        telemetry_to_file(t, 'splk.json')
+        telemetry_to_file(t, 'csco.json')
         return t.first_sum_value() == num_adds
