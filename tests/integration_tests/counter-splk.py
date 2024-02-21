@@ -22,8 +22,6 @@ class SplunkIntegrationTest(IntegrationTest):
         return 'splunk-py-trace'
 
     def validate(self, t: Telemetry) -> bool:
-        telemetry_to_file()
-        with open('splk.json', 'w') as file:
-            file.write(str(t))
+        telemetry_to_file(t, 'splk.json')
         return t.first_sum_value() == num_adds
 
