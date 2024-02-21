@@ -3,6 +3,7 @@ import importlib
 import inspect
 import os
 import logging
+from subprocess import CompletedProcess, CalledProcessError
 
 from otelserver import OtlpGrpcServer
 
@@ -23,12 +24,28 @@ class IntegrationTestRunner:
             self.eval_one(path)
 
     def eval_one(self, script):
-        se = ScriptExecution(self.test_scripts_dir, script, self.logger)
+        venv_dir = script_to_venv_dir(script)
+        se = ScriptExecution(self.test_scripts_dir, script, self.logger, venv_dir=venv_dir)
+        if not se.enabled():
+            self.logger.info(f'Skipping disabled script {script}')
+            return
         se.start_otlp_listener()
         se.set_up_venv()
-        se.run_script()
-        se.cleanup()
-        se.validate()
+        result = None
+        try:
+            result = se.run_script()
+        except CalledProcessError as e:
+            self.logger.exception(f'Failed to run script {script}')
+        finally:
+            if result is not None:
+                self.logger.info(f'Result: {result}')
+            se.stop_server()
+            se.delete_venv()
+            se.validate()
+
+
+def script_to_venv_dir(script):
+    return script[:-3]
 
 
 class ScriptExecution:
@@ -44,6 +61,9 @@ class ScriptExecution:
 
         integration_test_class = self.get_integration_test_class()
         self.integration_test: IntegrationTest = integration_test_class()
+
+    def enabled(self):
+        return self.integration_test.enabled()
 
     def get_integration_test_class(self):
         module = self.import_module()
@@ -68,27 +88,28 @@ class ScriptExecution:
             self.logger.info(f'Installing requirement: "{req}"')
             self.venv_run('pip', 'install', req)
 
-    def run_script(self):
+    def run_script(self) -> CompletedProcess[str]:
+        """Throws CalledProcessError"""
         script_path = os.path.join(self.test_scripts_dir, self.script)
         cmd = ['python', script_path]
         wrapper_script = self.integration_test.wrapper()
         if wrapper_script:
             cmd.insert(0, wrapper_script)
-        self.venv_run(*cmd)
+        return self.venv_run(*cmd)
 
-    def venv_run(self, *cmd_plus_args):
-        self.logger.info(f'Running in venv: {cmd_plus_args}')
-        self.venv.run(*cmd_plus_args)
+    def venv_run(self, *cmd_plus_args) -> CompletedProcess[str]:
+        """Throws CalledProcessError"""
+        self.logger.info(f'venv % {" ".join(cmd_plus_args)}')
+        return self.venv.run(*cmd_plus_args)
 
-    def cleanup(self):
-        self.logger.info(f'Cleaning up')
-        self.venv.delete()
+    def stop_server(self):
         self.svr.stop()
 
+    def delete_venv(self):
+        self.venv.delete()
+
     def validate(self):
-        valid = self.integration_test.validate(self.handler.telemetry)
-        self.logger.info(f'Valid: {valid}')
-        assert valid
+        self.integration_test.validate(self.handler.telemetry)
 
 
 def main():

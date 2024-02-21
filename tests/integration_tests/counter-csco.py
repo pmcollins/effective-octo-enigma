@@ -1,19 +1,19 @@
-import time
+import os
 from typing import Sequence
 
-from opentelemetry import metrics
+from tests.integration_tests.lib import count_up_it
+from tests.util import Telemetry, IntegrationTest, save_telemetry
 
-from tests.util import Telemetry, IntegrationTest, telemetry_to_file
+os.environ['OTEL_SERVICE_NAME'] = 'cop-integration-test'
 
-num_adds = 20
-meter = metrics.get_meter('my-meter')
-counter = meter.create_counter('my-counter')
-for i in range(num_adds):
-    time.sleep(1)
-    counter.add(1)
+num_adds = 24
+count_up_it(num_adds)
 
 
 class CiscoIntegrationTest(IntegrationTest):
+
+    def enabled(self) -> bool:
+        return True
 
     def requirements(self) -> Sequence[str]:
         return ('..',)
@@ -21,6 +21,6 @@ class CiscoIntegrationTest(IntegrationTest):
     def wrapper(self) -> str:
         return 'cisco-instrument'
 
-    def validate(self, t: Telemetry) -> bool:
-        telemetry_to_file(t, 'csco.json')
-        return t.first_sum_value() == num_adds
+    def validate(self, t: Telemetry) -> None:
+        save_telemetry(t, 'csco.json')
+        assert num_adds == t.first_sum_value()

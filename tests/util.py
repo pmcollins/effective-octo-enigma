@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import venv
+from typing import Optional
 
 from google.protobuf.json_format import MessageToDict
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
@@ -28,8 +29,16 @@ class Telemetry:
     def add_trace(self, trace: ExportTraceServiceRequest):
         self.trace.append(trace)
 
-    def first_sum_value(self) -> int:
+    def first_sum_value(self) -> Optional[int]:
+        if not self.num_metrics():
+            return None
         return self.metrics.get(0).resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
+
+    def num_metrics(self) -> int:
+        return self.metrics.len()
+
+    def num_traces(self) -> int:
+        return self.trace.len()
 
     def to_dict(self):
         return {
@@ -62,7 +71,11 @@ class Pb2Collection:
     def get(self, idx):
         return self.messages[idx]
 
-def telemetry_to_file(telemetry: Telemetry, filename: str) -> None:
+    def len(self):
+        return len(self.messages)
+
+
+def save_telemetry(telemetry: Telemetry, filename: str) -> None:
     with open(filename, 'w') as file:
         file.write(str(telemetry))
 
@@ -91,6 +104,7 @@ class Venv:
         venv.create(self.venv_dir, with_pip=True)
 
     def run(self, *cmd_plus_args):
+        """Throws CalledProcessError"""
         cmd_path = os.path.join(self.venv_dir, 'bin', cmd_plus_args[0])
         return subprocess.run(
             [cmd_path, *cmd_plus_args[1:]],
@@ -107,6 +121,10 @@ class Venv:
 class IntegrationTest(abc.ABC):
 
     @abc.abstractmethod
+    def enabled(self) -> bool:
+        pass
+
+    @abc.abstractmethod
     def requirements(self) -> list[str]:
         pass
 
@@ -115,5 +133,5 @@ class IntegrationTest(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def validate(self, t: Telemetry) -> bool:
+    def validate(self, t: Telemetry) -> None:
         pass

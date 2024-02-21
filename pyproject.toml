@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-sdk==1.22.0",
   "opentelemetry-exporter-otlp-proto-grpc==1.22.0",
   "opentelemetry-instrumentation==0.43b0",
-  "otel-grpc-server"
+  "otel-grpc-server",
 ]
 
 [project.urls]
@@ -39,7 +39,7 @@ Source = "https://github.com/unknown/csco-otel-python"
 
 [project.scripts]
 cisco-instrument = "csco_otel_python.scripts:cisco_instrument"
-splunk-py-trace = "csco_otel_python.scripts:splunk_py_trace"
+#splunk-py-trace = "csco_otel_python.scripts:splunk_py_trace"
 
 [project.entry-points.opentelemetry_distro]
 distro = "csco_otel_python.distro:CscoDistro"
@@ -95,7 +95,7 @@ python = "3.8"
 dependencies = [
 ]
 [tool.hatch.envs.integration-tests.scripts]
-pytest-integration = "pytest integration-tests"
+intg = "pytest tests/integration_tests"
 
 [tool.black]
 target-version = ["py37"]
