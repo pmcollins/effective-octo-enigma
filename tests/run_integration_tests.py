@@ -38,7 +38,7 @@ class IntegrationTestRunner:
             self.logger.exception(f'Failed to run script {script}')
         finally:
             if result is not None:
-                self.logger.info(f'Result: {result}')
+                self.logger.info(result.stdout)
             se.stop_server()
             se.delete_venv()
             se.validate()
