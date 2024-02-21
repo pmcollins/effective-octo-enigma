@@ -23,6 +23,9 @@ class Config(ConfigABC):
         return 'splunk-py-trace'
 
     def validate(self, t: Telemetry) -> bool:
+        print(f'telemetry: {t}')
+        with open('splk.json', 'w') as file:
+            file.write(str(t))
         count = t.metrics[0].resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
         return count == num_adds
 

@@ -1,4 +1,5 @@
 import abc
+import json
 import os
 import shutil
 import subprocess
@@ -25,6 +26,19 @@ class Telemetry:
 
     def add_trace(self, trace):
         self.trace.append(trace)
+
+    def to_dict(self):
+        return {
+            "logs": self.logs,
+            "metrics": self.metrics,
+            "trace": self.trace,
+        }
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
+
+    def __str__(self):
+        return self.to_json()
 
 
 class AccumulatingHandler(OtlpRequestHandlerABC):

@@ -18,7 +18,7 @@ class IntegrationTestRunner:
 
     def eval_all(self):
         for path in glob.glob('*.py', root_dir=self.test_scripts_dir):
-            self.logger.info(f'Evaluating {path}')
+            self.logger.info(f'Testing {path}')
             self.eval_one(path)
 
     def eval_one(self, script):
