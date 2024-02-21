@@ -27,6 +27,9 @@ class Telemetry:
     def add_trace(self, trace):
         self.trace.append(trace)
 
+    def first_sum_value(self) -> int:
+        return self.metrics[0].resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
+
     def to_dict(self):
         return {
             "logs": self.logs,
@@ -35,10 +38,15 @@ class Telemetry:
         }
 
     def to_json(self):
-        return json.dumps(self.to_dict())
+        return str(self.to_dict())
 
     def __str__(self):
         return self.to_json()
+
+
+def telemetry_to_file(telemetry: Telemetry, filename: str) -> None:
+    with open(filename, 'w') as file:
+        file.write(str(telemetry))
 
 
 class AccumulatingHandler(OtlpRequestHandlerABC):
@@ -78,16 +86,16 @@ class Venv:
         shutil.rmtree(self.venv_dir, ignore_errors=True)
 
 
-class ConfigABC(abc.ABC):
+class IntegrationTest(abc.ABC):
 
     @abc.abstractmethod
     def requirements(self) -> list[str]:
         pass
 
     @abc.abstractmethod
-    def validate(self, t: Telemetry) -> bool:
+    def wrapper(self) -> str:
         pass
 
     @abc.abstractmethod
-    def wrapper_name(self) -> str:
+    def validate(self, t: Telemetry) -> bool:
         pass

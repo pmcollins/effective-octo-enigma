@@ -1,11 +1,12 @@
 import glob
 import importlib
+import inspect
 import os
 import logging
 
 from otelserver import OtlpGrpcServer
 
-from tests.util import AccumulatingHandler, Venv, ConfigABC
+from tests.util import AccumulatingHandler, Venv, IntegrationTest
 
 INTEGRATION_TESTS_DIR = 'integration_tests'
 
@@ -41,8 +42,15 @@ class ScriptExecution:
         self.handler = AccumulatingHandler()
         self.svr = OtlpGrpcServer(self.handler)
 
-        script_module = self.import_module()
-        self.config: ConfigABC = script_module.Config()
+        integration_test_class = self.get_integration_test_class()
+        self.integration_test: IntegrationTest = integration_test_class()
+
+    def get_integration_test_class(self):
+        module = self.import_module()
+        for attr_name in dir(module):
+            value = getattr(module, attr_name)
+            if inspect.isclass(value) and issubclass(value, IntegrationTest) and value is not IntegrationTest:
+                return value
 
     def import_module(self):
         module_name = '.'.join(['tests', self.test_scripts_dir, self.script[:-3]])
@@ -56,14 +64,14 @@ class ScriptExecution:
     def set_up_venv(self):
         self.logger.info(f'Creating venv')
         self.venv.create()
-        for req in self.config.requirements():
+        for req in self.integration_test.requirements():
             self.logger.info(f'Installing requirement: "{req}"')
             self.venv_run('pip', 'install', req)
 
     def run_script(self):
         script_path = os.path.join(self.test_scripts_dir, self.script)
         cmd = ['python', script_path]
-        wrapper_script = self.config.wrapper_name()
+        wrapper_script = self.integration_test.wrapper()
         if wrapper_script:
             cmd.insert(0, wrapper_script)
         self.venv_run(*cmd)
@@ -78,7 +86,7 @@ class ScriptExecution:
         self.svr.stop()
 
     def validate(self):
-        valid = self.config.validate(self.handler.telemetry)
+        valid = self.integration_test.validate(self.handler.telemetry)
         self.logger.info(f'Valid: {valid}')
         assert valid
 
