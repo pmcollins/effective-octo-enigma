@@ -34,6 +34,9 @@ class Telemetry:
             return None
         return self.metrics.get(0).resource_metrics[0].scope_metrics[0].metrics[0].sum.data_points[0].as_int
 
+    def get_traces(self):
+        return self.trace.as_list()
+
     def num_metrics(self) -> int:
         return self.metrics.len()
 
@@ -58,6 +61,9 @@ class Pb2Collection:
 
     def __init__(self):
         self.messages = []
+
+    def as_list(self):
+        return self.messages
 
     def append(self, pb2obj):
         self.messages.append(pb2obj)
@@ -121,7 +127,7 @@ class Venv:
 class IntegrationTest(abc.ABC):
 
     @abc.abstractmethod
-    def enabled(self) -> bool:
+    def is_enabled(self) -> bool:
         pass
 
     @abc.abstractmethod
@@ -134,4 +140,8 @@ class IntegrationTest(abc.ABC):
 
     @abc.abstractmethod
     def validate(self, t: Telemetry) -> None:
+        pass
+
+    @abc.abstractmethod
+    def should_teardown(self) -> bool:
         pass

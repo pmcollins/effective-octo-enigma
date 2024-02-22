@@ -3,13 +3,14 @@ import importlib
 import inspect
 import os
 import logging
+from pathlib import Path
 from subprocess import CompletedProcess, CalledProcessError
 
 from otelserver import OtlpGrpcServer
 
-from tests.util import AccumulatingHandler, Venv, IntegrationTest
+from otel_integration.util import Venv, AccumulatingHandler, IntegrationTest
 
-INTEGRATION_TESTS_DIR = 'integration_tests'
+SCRIPT_DIR_NAME = 'test_scripts'
 
 
 class IntegrationTestRunner:
@@ -19,33 +20,34 @@ class IntegrationTestRunner:
         self.logger = logger
 
     def eval_all(self):
-        for path in glob.glob('*.py', root_dir=self.test_scripts_dir):
-            self.logger.info(f'Testing {path}')
-            self.eval_one(path)
+        for script_name in glob.glob('*.py', root_dir=self.test_scripts_dir):
+            self.logger.info(f'Testing {script_name}')
+            self.eval_one(script_name)
 
-    def eval_one(self, script):
-        venv_dir = script_to_venv_dir(script)
-        se = ScriptExecution(self.test_scripts_dir, script, self.logger, venv_dir=venv_dir)
-        if not se.enabled():
-            self.logger.info(f'Skipping disabled script {script}')
+    def eval_one(self, script_name):
+        venv_dir = script_name_to_venv_dir(script_name)
+        execution = ScriptExecution(self.test_scripts_dir, script_name, self.logger, venv_dir=venv_dir)
+        if not execution.script_is_enabled():
+            self.logger.info(f'Skipping disabled script {script_name}')
             return
-        se.start_otlp_listener()
-        se.set_up_venv()
+        execution.start_otlp_listener()
+        execution.set_up_venv()
         result = None
         try:
-            result = se.run_script()
+            result = execution.run_script()
         except CalledProcessError as e:
-            self.logger.exception(f'Failed to run script {script}')
+            self.logger.exception(f'Failed to run script {script_name}: {e}')
         finally:
             if result is not None:
                 self.logger.info(result.stdout)
-            se.stop_server()
-            se.delete_venv()
-            se.validate()
+            execution.stop_server()
+            if execution.script_should_teardown():
+                execution.delete_venv()
+            execution.validate()
 
 
-def script_to_venv_dir(script):
-    return script[:-3]
+def script_name_to_venv_dir(script):
+    return '_venv_' + script[:-3]
 
 
 class ScriptExecution:
@@ -62,8 +64,11 @@ class ScriptExecution:
         integration_test_class = self.get_integration_test_class()
         self.integration_test: IntegrationTest = integration_test_class()
 
-    def enabled(self):
-        return self.integration_test.enabled()
+    def script_is_enabled(self):
+        return self.integration_test.is_enabled()
+
+    def script_should_teardown(self):
+        return self.integration_test.should_teardown()
 
     def get_integration_test_class(self):
         module = self.import_module()
@@ -73,7 +78,7 @@ class ScriptExecution:
                 return value
 
     def import_module(self):
-        module_name = '.'.join(['tests', self.test_scripts_dir, self.script[:-3]])
+        module_name = '.'.join(['otel_integration', self.test_scripts_dir, self.script[:-3]])
         self.logger.info(f'Importing module {module_name}')
         return importlib.import_module(module_name)
 
@@ -118,8 +123,13 @@ def main():
         format='%(asctime)s %(levelname)s %(message)s'
     )
     logger = logging.getLogger(__name__)
-    runner = IntegrationTestRunner(INTEGRATION_TESTS_DIR, logger)
+    runner = IntegrationTestRunner(SCRIPT_DIR_NAME, logger)
     runner.eval_all()
+
+
+def get_scripts_dir():
+    parent_dir = Path(__file__).parent.absolute()
+    return str(parent_dir / SCRIPT_DIR_NAME)
 
 
 if __name__ == '__main__':
