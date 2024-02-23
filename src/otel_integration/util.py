@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 import venv
-from typing import Optional
+from typing import Optional, AnyStr
 
 from google.protobuf.json_format import MessageToDict
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
@@ -16,9 +16,9 @@ from otelserver import OtlpRequestHandlerABC
 class Telemetry:
 
     def __init__(self):
-        self.logs: Pb2Collection = Pb2Collection()
-        self.metrics: Pb2Collection = Pb2Collection()
-        self.trace: Pb2Collection = Pb2Collection()
+        self.logs: ProtoCollection = ProtoCollection()
+        self.metrics: ProtoCollection = ProtoCollection()
+        self.trace: ProtoCollection = ProtoCollection()
 
     def add_log(self, log: ExportLogsServiceRequest):
         self.logs.append(log)
@@ -57,7 +57,7 @@ class Telemetry:
         return self.to_json()
 
 
-class Pb2Collection:
+class ProtoCollection:
 
     def __init__(self):
         self.messages = []
@@ -81,9 +81,9 @@ class Pb2Collection:
         return len(self.messages)
 
 
-def save_telemetry(telemetry: Telemetry, filename: str) -> None:
+def save(s: AnyStr, filename: str) -> None:
     with open(filename, 'w') as file:
-        file.write(str(telemetry))
+        file.write(s)
 
 
 class AccumulatingHandler(OtlpRequestHandlerABC):
@@ -92,12 +92,15 @@ class AccumulatingHandler(OtlpRequestHandlerABC):
         self.telemetry = Telemetry()
 
     def handle_logs(self, request: ExportLogsServiceRequest, context):
+        # save_proto(request, 'logs')
         self.telemetry.add_log(request)
 
     def handle_metrics(self, request: ExportMetricsServiceRequest, context):
+        # save_proto(request, 'metrics')
         self.telemetry.add_metric(request)
 
     def handle_trace(self, request: ExportTraceServiceRequest, context):
+        # save_proto(request, 'trace')
         self.telemetry.add_trace(request)
 
 

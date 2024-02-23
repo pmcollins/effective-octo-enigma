@@ -175,3 +175,6 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.hatch.build]
+packages = ["src/csco_otel_python", "src/otel_integration"]

@@ -1,14 +1,22 @@
 import os
+import time
 from typing import Sequence
 
-from otel_integration.test_scripts.lib import count_up_it
-from otel_integration.util import IntegrationTest, Telemetry, save_telemetry
+from opentelemetry import metrics, trace
+
+from otel_integration.pbutil import get_trace_attr_str
+from otel_integration.util import IntegrationTest, Telemetry, save
 
 service_name = 'cop-integration-test'
 os.environ['OTEL_SERVICE_NAME'] = service_name
 
 num_adds = 24
-count_up_it(num_adds)
+counter = metrics.get_meter('my-meter').create_counter('my-counter')
+tracer = trace.get_tracer('my-tracer')
+for i in range(num_adds):
+    with tracer.start_as_current_span('my-span') as span:
+        time.sleep(1)
+        counter.add(1)
 
 
 class CiscoIntegrationTest(IntegrationTest):
@@ -23,15 +31,13 @@ class CiscoIntegrationTest(IntegrationTest):
         return 'cisco-instrument'
 
     def validate(self, t: Telemetry) -> None:
-        save_telemetry(t, 'csco.json')
-        assert_trace_service_name(t.get_traces(), service_name)
+        save(str(t), 'csco.json')
+        for tr in t.get_traces():
+            found_svc_names = get_trace_attr_str(tr, 'service.name')
+            assert service_name == found_svc_names[0]
         assert num_adds == t.first_sum_value()
         assert num_adds == t.num_traces()
 
     def should_teardown(self) -> bool:
         return True
 
-
-def assert_trace_service_name(traces, svc_name):
-    for trace in traces:
-        assert trace.resourceSpans[0].resource.attributes['serviceName'] == svc_name
